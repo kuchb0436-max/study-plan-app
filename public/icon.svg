@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#080D1A" />
+    </linearGradient>
+    <linearGradient id="flowGrad" x1="112" y1="128" x2="400" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="55%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="160" y1="200" x2="360" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#93C5FD" />
+      <stop offset="100%" stop-color="#C4B5FD" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect x="16" y="16" width="480" height="480" rx="100" stroke="#1E293B" stroke-width="4" />
+  <!-- Flowing open book / wave emblem -->
+  <path
+    d="M124 176C124 156.118 140.118 140 160 140H218C238.987 140 256 157.013 256 178V366C240 348 214 338 186 338H144C132.954 338 124 329.046 124 318V176Z"
+    fill="url(#flowGrad)"
+    fill-opacity="0.92"
+  />
+  <path
+    d="M388 176C388 156.118 371.882 140 352 140H294C273.013 140 256 157.013 256 178V366C272 348 298 338 326 338H368C379.046 338 388 329.046 388 318V176Z"
+    fill="url(#flowGrad)"
+    fill-opacity="0.72"
+  />
+  <!-- Flow wave check arc across pages -->
+  <path
+    d="M156 266C190 266 212 222 256 222C300 222 322 258 356 258"
+    stroke="url(#accentGrad)"
+    stroke-width="22"
+    stroke-linecap="round"
+  />
+  <circle cx="356" cy="258" r="14" fill="#E0E7FF" />
+</svg>

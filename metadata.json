@@ -1,0 +1,6 @@
+{
+  "name": "Study Flow",
+  "description": "Mobile-first student productivity PWA for tasks, subjects, study timetable, exam countdowns, and progress tracking with offline support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface ModalSheetProps {
   isOpen: boolean;
@@ -9,6 +10,8 @@ interface ModalSheetProps {
 }
 
 export const ModalSheet: React.FC<ModalSheetProps> = ({ isOpen, onClose, title, children }) => {
+  const { t } = useI18n();
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,14 +40,14 @@ export const ModalSheet: React.FC<ModalSheetProps> = ({ isOpen, onClose, title, 
         </div>
 
         <div className="flex items-center justify-between px-5 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate pr-4">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate pe-4">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close modal"
-            className="min-h-[44px] min-w-[44px] -mr-2 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label={t('closeModalAria')}
+            className="min-h-[44px] min-w-[44px] -me-2 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

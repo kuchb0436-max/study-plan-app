@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Check, CheckSquare, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { StudyTask, Subject } from '../types/study';
 import { formatCompactDate, toLocalISODate } from '../utils/date';
 
@@ -24,6 +25,9 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
   onDeleteTask,
   onOpenSubjects,
 }) => {
+  const { t, language, formatNum } = useI18n();
+  const intlLocale = language.intlLocale;
+
   const [filter, setFilter] = useState<TaskFilter>('pending');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,26 +36,38 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
 
   const counts = useMemo(() => {
-    const pending = tasks.filter((t) => !t.completed).length;
+    const pending = tasks.filter((taskItem) => !taskItem.completed).length;
     const completed = tasks.length - pending;
     return { all: tasks.length, pending, completed };
   }, [tasks]);
 
+  const compactDateLabels = {
+    today: t('today'),
+    tomorrow: t('tomorrow'),
+    yesterday: t('yesterday'),
+  };
+
   const filteredTasks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return tasks
-      .filter((t) => {
-        if (filter === 'pending' && t.completed) return false;
-        if (filter === 'completed' && !t.completed) return false;
-        if (subjectFilter === 'general' && t.subjectId !== null) return false;
-        if (subjectFilter !== 'all' && subjectFilter !== 'general' && t.subjectId !== subjectFilter) {
+      .filter((taskItem) => {
+        if (filter === 'pending' && taskItem.completed) return false;
+        if (filter === 'completed' && !taskItem.completed) return false;
+        if (subjectFilter === 'general' && taskItem.subjectId !== null) return false;
+        if (
+          subjectFilter !== 'all' &&
+          subjectFilter !== 'general' &&
+          taskItem.subjectId !== subjectFilter
+        ) {
           return false;
         }
         if (q) {
-          const subjectName = t.subjectId ? subjectMap.get(t.subjectId)?.name.toLowerCase() ?? '' : '';
+          const subjectName = taskItem.subjectId
+            ? subjectMap.get(taskItem.subjectId)?.name.toLowerCase() ?? ''
+            : '';
           return (
-            t.title.toLowerCase().includes(q) ||
-            (t.notes ?? '').toLowerCase().includes(q) ||
+            taskItem.title.toLowerCase().includes(q) ||
+            (taskItem.notes ?? '').toLowerCase().includes(q) ||
             subjectName.includes(q)
           );
         }
@@ -71,11 +87,9 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Tasks
+            {t('navTasks')}
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Track homework, revision goals, and deadlines across your subjects.
-          </p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t('tasksSub')}</p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
@@ -84,7 +98,7 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
             onClick={onOpenSubjects}
             className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0F172A] hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap cursor-pointer"
           >
-            Subjects ({subjects.length})
+            {t('subjectsCountBtn', { count: formatNum(subjects.length) })}
           </button>
           <button
             type="button"
@@ -92,7 +106,7 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
             className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-sm font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Task</span>
+            <span>{t('addTask')}</span>
           </button>
         </div>
       </div>
@@ -101,14 +115,23 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center gap-3">
         <div
           role="tablist"
-          aria-label="Filter tasks by status"
+          aria-label={t('filterBySubjectAria')}
           className="grid grid-cols-3 p-1 rounded-xl bg-slate-200/70 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shrink-0"
         >
           {(
             [
-              { id: 'pending', label: `Pending (${counts.pending})` },
-              { id: 'completed', label: `Completed (${counts.completed})` },
-              { id: 'all', label: `All (${counts.all})` },
+              {
+                id: 'pending',
+                label: t('filterPendingCount', { count: formatNum(counts.pending) }),
+              },
+              {
+                id: 'completed',
+                label: t('filterCompletedCount', { count: formatNum(counts.completed) }),
+              },
+              {
+                id: 'all',
+                label: t('filterAllCount', { count: formatNum(counts.all) }),
+              },
             ] as { id: TaskFilter; label: string }[]
           ).map((tab) => (
             <button
@@ -130,25 +153,25 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
 
         <div className="flex flex-1 gap-2 min-w-0">
           <div className="relative flex-1 min-w-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks..."
-              aria-label="Search tasks"
-              className="w-full min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] pl-9 pr-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder={t('searchTasksPlaceholder')}
+              aria-label={t('searchTasksAria')}
+              className="w-full min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] ps-9 pe-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <select
             value={subjectFilter}
             onChange={(e) => setSubjectFilter(e.target.value)}
-            aria-label="Filter by subject"
+            aria-label={t('filterBySubjectAria')}
             className="min-h-[44px] max-w-[132px] sm:max-w-[160px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">All Subjects</option>
-            <option value="general">General</option>
+            <option value="all">{t('allSubjects')}</option>
+            <option value="general">{t('general')}</option>
             {subjects.map((sub) => (
               <option key={sub.id} value={sub.id}>
                 {sub.name}
@@ -165,15 +188,13 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
             <CheckSquare className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
               {tasks.length === 0
-                ? 'No tasks created yet'
+                ? t('noTasksCreatedTitle')
                 : filter === 'pending' && counts.pending === 0
-                ? 'No pending tasks'
-                : 'No matching tasks'}
+                ? t('noPendingTasksTitle')
+                : t('noMatchingTasksTitle')}
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              {tasks.length === 0
-                ? 'Add homework assignments or study sessions to organize your workload.'
-                : 'Try adjusting your filter or add a new study task.'}
+              {tasks.length === 0 ? t('noTasksCreatedSub') : t('noMatchingTasksSub')}
             </p>
             <button
               type="button"
@@ -181,7 +202,7 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
               className="mt-5 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Task</span>
+              <span>{t('addTask')}</span>
             </button>
           </div>
         ) : (
@@ -191,10 +212,17 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
               const isOverdue = !task.completed && task.dueDate < todayISO;
               const priorityLabel =
                 task.priority === 'high'
-                  ? 'High priority'
+                  ? t('priorityLabelHigh')
                   : task.priority === 'medium'
-                  ? 'Medium priority'
-                  : 'Low priority';
+                  ? t('priorityLabelMedium')
+                  : t('priorityLabelLow');
+              const categoryLabel =
+                task.category === 'homework' ? t('categoryHomework') : t('categoryStudy');
+              const formattedDate = formatCompactDate(
+                task.dueDate,
+                intlLocale,
+                compactDateLabels
+              );
 
               return (
                 <li
@@ -206,9 +234,11 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
                       type="button"
                       onClick={() => onToggleTask(task.id)}
                       aria-label={
-                        task.completed ? `Mark "${task.title}" pending` : `Mark "${task.title}" completed`
+                        task.completed
+                          ? t('markTaskPendingAria', { title: task.title })
+                          : t('markTaskCompletedAria', { title: task.title })
                       }
-                      className="min-h-[44px] min-w-[44px] -ml-2 -my-1.5 flex items-center justify-center shrink-0 cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] -ms-2 -my-1.5 flex items-center justify-center shrink-0 cursor-pointer"
                     >
                       <span
                         className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
@@ -248,10 +278,10 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
                             <span>{subject.name}</span>
                           </span>
                         ) : (
-                          <span>General</span>
+                          <span>{t('general')}</span>
                         )}
                         <span aria-hidden="true">·</span>
-                        <span className="capitalize">{task.category}</span>
+                        <span>{categoryLabel}</span>
                         <span aria-hidden="true">·</span>
                         <span
                           className={
@@ -268,17 +298,19 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
                             isOverdue ? 'font-semibold text-rose-600 dark:text-rose-400' : ''
                           }`}
                         >
-                          {isOverdue ? `Overdue (${formatCompactDate(task.dueDate)})` : `Due ${formatCompactDate(task.dueDate)}`}
+                          {isOverdue
+                            ? t('overdueLabel', { date: formattedDate })
+                            : t('dueDateLabel', { date: formattedDate })}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center shrink-0 -mr-2">
+                  <div className="flex items-center shrink-0 -me-2">
                     <button
                       type="button"
                       onClick={() => onEditTask(task)}
-                      aria-label={`Edit "${task.title}"`}
+                      aria-label={t('editItemAria', { name: task.title })}
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <Pencil className="w-4 h-4" />
@@ -286,7 +318,7 @@ export const TaskManagerView: React.FC<TaskManagerViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onDeleteTask(task.id)}
-                      aria-label={`Delete "${task.title}"`}
+                      aria-label={t('deleteItemAria', { name: task.title })}
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />

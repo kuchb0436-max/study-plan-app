@@ -12,6 +12,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { useI18n } from '../i18n';
+import { TranslationKey } from '../i18n/locales/en';
 import {
   StudentProfile,
   Subject,
@@ -19,6 +21,26 @@ import {
   ThemeMode,
 } from '../types/study';
 import { generateId } from '../utils/storage';
+
+const COLOR_LABEL_KEYS: Record<string, TranslationKey> = {
+  blue: 'colorBlue',
+  indigo: 'colorIndigo',
+  violet: 'colorViolet',
+  cyan: 'colorCyan',
+  emerald: 'colorEmerald',
+  amber: 'colorAmber',
+  rose: 'colorRose',
+  teal: 'colorTeal',
+};
+
+const GRADE_SUGGESTION_KEYS: TranslationKey[] = [
+  'gradeSuggestion9',
+  'gradeSuggestion10',
+  'gradeSuggestion11',
+  'gradeSuggestion12',
+  'gradeSuggestionUndergrad',
+  'gradeSuggestionGrad',
+];
 
 interface OnboardingViewProps {
   initialProfile: StudentProfile;
@@ -36,15 +58,6 @@ interface OnboardingViewProps {
 
 type OnboardingStep = 'welcome' | 1 | 2 | 3;
 
-const GRADE_SUGGESTIONS = [
-  'Grade 9',
-  'Grade 10',
-  'Grade 11',
-  'Grade 12',
-  'Undergraduate',
-  'Graduate',
-];
-
 export const OnboardingView: React.FC<OnboardingViewProps> = ({
   initialProfile,
   initialTheme,
@@ -54,6 +67,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   onThemeChange,
   onComplete,
 }) => {
+  const { t, formatNum } = useI18n();
+
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [name, setName] = useState(initialProfile.name);
   const [grade, setGrade] = useState(initialProfile.grade);
@@ -97,11 +112,11 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     const trimmedGrade = grade.trim();
 
     if (!trimmedName) {
-      setProfileError('Please enter your name so we can personalize your planner.');
+      setProfileError(t('errOnboardingName'));
       return;
     }
     if (!trimmedGrade) {
-      setProfileError('Please enter your class or grade.');
+      setProfileError(t('errOnboardingGrade'));
       return;
     }
 
@@ -113,23 +128,23 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     e.preventDefault();
     const trimmed = subjectName.trim();
     if (!trimmed) {
-      setSubjectError('Enter a subject name to add it.');
+      setSubjectError(t('errEnterSubject'));
       return;
     }
     if (trimmed.length > 60) {
-      setSubjectError('Subject name must be 60 characters or fewer.');
+      setSubjectError(t('errSubjectMax'));
       return;
     }
     const duplicate = subjects.some(
       (s) => s.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (duplicate) {
-      setSubjectError('You already added this subject.');
+      setSubjectError(t('errSubjectDuplicate'));
       return;
     }
 
     if (!allColorsUsed && usedColors.has(subjectColor.toLowerCase())) {
-      setSubjectError('Choose a unique color that has not been assigned yet.');
+      setSubjectError(t('errUniqueColor'));
       return;
     }
 
@@ -189,22 +204,22 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div className="flex items-center gap-2.5">
                 <img
                   src="/icon.svg"
-                  alt="Study Flow emblem"
+                  alt={t('appName')}
                   className="w-8 h-8 rounded-lg shrink-0"
                   referrerPolicy="no-referrer"
                 />
                 <div>
                   <span className="font-display text-base font-bold tracking-tight text-slate-900 dark:text-slate-50 block leading-none">
-                    Study Flow
+                    {t('appName')}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 block tabular-nums">
-                    Step {numericStep} of 3
+                    {t('stepOf3', { step: formatNum(numericStep) })}
                   </span>
                 </div>
               </div>
             ) : (
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Onboarding Preview
+                {t('onboardingPreview')}
               </span>
             )}
 
@@ -231,7 +246,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   className="min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
-                  <span>Exit Preview</span>
+                  <span>{t('exitPreview')}</span>
                 </button>
               )}
             </div>
@@ -246,7 +261,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div className="mx-auto w-20 h-20 rounded-2xl bg-[#0B1120] border border-slate-800 flex items-center justify-center shadow-lg shadow-indigo-500/10">
                 <img
                   src="/icon.svg"
-                  alt="Study Flow logo"
+                  alt={t('appName')}
                   className="w-16 h-16 rounded-xl"
                   referrerPolicy="no-referrer"
                 />
@@ -254,30 +269,30 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
 
               <div className="space-y-2">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
-                  Welcome to Study Flow
+                  {t('welcomeHeading')}
                 </h1>
                 <p className="text-base font-medium text-indigo-600 dark:text-indigo-400">
-                  Your goals. Your schedule. Your success.
+                  {t('welcomeSubtitle')}
                 </p>
               </div>
 
-              <div className="text-left rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 divide-y divide-slate-200/80 dark:divide-slate-800/80">
+              <div className="text-start rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 divide-y divide-slate-200/80 dark:divide-slate-800/80">
                 <div className="px-4 py-3 flex items-center gap-3">
                   <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                    Organize subjects, homework, and revision priorities in one view.
+                    {t('welcomeBullet1')}
                   </p>
                 </div>
                 <div className="px-4 py-3 flex items-center gap-3">
                   <CalendarClock className="w-4 h-4 text-indigo-500 shrink-0" />
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                    Build your weekly study timetable and track exam countdowns.
+                    {t('welcomeBullet2')}
                   </p>
                 </div>
                 <div className="px-4 py-3 flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" />
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                    Works completely offline with private local device storage.
+                    {t('welcomeBullet3')}
                   </p>
                 </div>
               </div>
@@ -287,8 +302,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 onClick={() => setStep(1)}
                 className="w-full min-h-[48px] px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
               >
-                <span>Get Started</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{t('getStarted')}</span>
+                <ArrowRight className="w-4 h-4 rtl:rotate-180" />
               </button>
             </div>
           )}
@@ -298,10 +313,10 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             <form onSubmit={handleContinueFromProfile} className="space-y-5" noValidate>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-                  Personal Details
+                  {t('personalDetailsTitle')}
                 </h1>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Tell us who you are and choose your preferred study theme.
+                  {t('personalDetailsSub')}
                 </p>
               </div>
 
@@ -319,7 +334,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   htmlFor="onboarding-name"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
                 >
-                  Student Name
+                  {t('studentNameLabel')}
                 </label>
                 <input
                   id="onboarding-name"
@@ -329,7 +344,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     setName(e.target.value);
                     if (profileError) setProfileError('');
                   }}
-                  placeholder="e.g., Alex Rivera"
+                  placeholder={t('studentNamePlaceholder')}
                   maxLength={60}
                   autoFocus
                   className="w-full min-h-[46px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -341,7 +356,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   htmlFor="onboarding-grade"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
                 >
-                  Class or Grade
+                  {t('classGradeLabel')}
                 </label>
                 <input
                   id="onboarding-grade"
@@ -351,34 +366,37 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     setGrade(e.target.value);
                     if (profileError) setProfileError('');
                   }}
-                  placeholder="e.g., Grade 11, Class 10-B, or Sophomore"
+                  placeholder={t('classGradePlaceholder')}
                   maxLength={40}
                   className="w-full min-h-[46px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                  {GRADE_SUGGESTIONS.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => {
-                        setGrade(suggestion);
-                        if (profileError) setProfileError('');
-                      }}
-                      className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                        grade === suggestion
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
+                  {GRADE_SUGGESTION_KEYS.map((key) => {
+                    const suggestion = t(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setGrade(suggestion);
+                          if (profileError) setProfileError('');
+                        }}
+                        className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          grade === suggestion
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {suggestion}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div>
                 <span className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Preferred Study Theme
+                  {t('preferredThemeLabel')}
                 </span>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -392,7 +410,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     }`}
                   >
                     <Moon className="w-4 h-4 shrink-0" />
-                    <span>Dark Navy</span>
+                    <span>{t('themeDarkNavy')}</span>
                   </button>
 
                   <button
@@ -406,7 +424,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     }`}
                   >
                     <Sun className="w-4 h-4 shrink-0" />
-                    <span>Light</span>
+                    <span>{t('themeLight')}</span>
                   </button>
                 </div>
               </div>
@@ -417,16 +435,16 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={() => setStep('welcome')}
                   className="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back</span>
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                  <span>{t('back')}</span>
                 </button>
 
                 <button
                   type="submit"
                   className="flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <span>Continue</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{t('continue')}</span>
+                  <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                 </button>
               </div>
             </form>
@@ -437,12 +455,12 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             <div className="space-y-5">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-                  Your Subjects
+                  {t('yourSubjectsTitle')}
                 </h1>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   {initialSubjects.length > 0
-                    ? 'Keep your existing subjects or add new ones with a unique color.'
-                    : 'Add your courses and pick a unique color for each subject.'}
+                    ? t('yourSubjectsExistingSub')
+                    : t('yourSubjectsNewSub')}
                 </p>
               </div>
 
@@ -462,7 +480,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       htmlFor="onboarding-subject-name"
                       className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                     >
-                      Subject Name
+                      {t('subjectNameLabel')}
                     </label>
                     <input
                       id="onboarding-subject-name"
@@ -472,7 +490,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                         setSubjectName(e.target.value);
                         if (subjectError) setSubjectError('');
                       }}
-                      placeholder="e.g., Mathematics"
+                      placeholder={t('onboardingSubjectPlaceholder')}
                       maxLength={60}
                       autoFocus
                       className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -483,14 +501,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       htmlFor="onboarding-subject-code"
                       className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                     >
-                      Code (optional)
+                      {t('onboardingCodeLabel')}
                     </label>
                     <input
                       id="onboarding-subject-code"
                       type="text"
                       value={subjectCode}
                       onChange={(e) => setSubjectCode(e.target.value)}
-                      placeholder="e.g., MATH 101"
+                      placeholder={t('onboardingCodePlaceholder')}
                       maxLength={20}
                       className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
@@ -500,11 +518,13 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Unique Subject Color
+                      {t('uniqueSubjectColor')}
                     </span>
                     {!allColorsUsed && (
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {SUBJECT_COLORS.length - usedColors.size} unused left
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                        {t('unusedColorsLeft', {
+                          count: formatNum(SUBJECT_COLORS.length - usedColors.size),
+                        })}
                       </span>
                     )}
                   </div>
@@ -512,6 +532,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     {SUBJECT_COLORS.map((option) => {
                       const isUsed = !allColorsUsed && usedColors.has(option.hex.toLowerCase());
                       const selected = subjectColor.toLowerCase() === option.hex.toLowerCase();
+                      const colorName = COLOR_LABEL_KEYS[option.id]
+                        ? t(COLOR_LABEL_KEYS[option.id])
+                        : option.name;
                       return (
                         <button
                           key={option.id}
@@ -521,7 +544,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                             setSubjectColor(option.hex);
                             if (subjectError) setSubjectError('');
                           }}
-                          aria-label={isUsed ? `${option.name} (already assigned)` : option.name}
+                          aria-label={colorName}
                           aria-pressed={selected}
                           className={`min-h-[42px] min-w-[42px] rounded-xl flex items-center justify-center border transition-all ${
                             isUsed
@@ -543,10 +566,10 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
 
                     <button
                       type="submit"
-                      className="ml-auto min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="ms-auto min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Add Subject</span>
+                      <span>{t('addSubject')}</span>
                     </button>
                   </div>
                 </div>
@@ -556,7 +579,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
                 {subjects.length === 0 ? (
                   <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">
-                    No subjects added yet. Add as many subjects as you need above, or continue and add them later.
+                    {t('noOnboardingSubjectsEmpty')}
                   </p>
                 ) : (
                   <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-52 overflow-y-auto">
@@ -577,7 +600,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                             </span>
                             {(subj.code || isExisting) && (
                               <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
-                                {[subj.code, isExisting ? 'Saved' : null].filter(Boolean).join(' · ')}
+                                {[subj.code, isExisting ? t('savedBadge') : null]
+                                  .filter(Boolean)
+                                  .join(' · ')}
                               </span>
                             )}
                           </div>
@@ -585,8 +610,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveSubject(subj.id)}
-                              aria-label={`Remove ${subj.name}`}
-                              className="min-h-[44px] min-w-[44px] -mr-2 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                              aria-label={t('deleteItemAria', { name: subj.name })}
+                              className="min-h-[44px] min-w-[44px] -me-2 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -604,8 +629,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={() => setStep(1)}
                   className="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back</span>
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                  <span>{t('back')}</span>
                 </button>
 
                 <button
@@ -614,9 +639,11 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   className="flex-1 sm:flex-initial min-h-[46px] px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <span>
-                    {subjects.length > 0 ? `Continue (${subjects.length})` : 'Skip & Continue'}
+                    {subjects.length > 0
+                      ? t('continueWithCount', { count: formatNum(subjects.length) })
+                      : t('skipAndContinue')}
                   </span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                 </button>
               </div>
             </div>
@@ -630,31 +657,29 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   <CheckCircle2 className="w-7 h-7 text-indigo-500" />
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 text-balance">
-                  You&apos;re all set, {name.trim()}
+                  {t('readyHeading', { name: name.trim() })}
                 </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Your Study Flow workspace is ready on this device.
-                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">{t('readySub')}</p>
               </div>
 
               <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 divide-y divide-slate-200/80 dark:divide-slate-800/80">
                 <div className="px-4 py-3 flex items-center justify-between gap-3 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Student</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('studentLabel')}</span>
                   <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                     {name.trim()} · {grade.trim()}
                   </span>
                 </div>
                 <div className="px-4 py-3 flex items-center justify-between gap-3 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Theme</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('themeLabel')}</span>
                   <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {theme === 'dark' ? 'Dark Navy' : 'Light'}
+                    {theme === 'dark' ? t('themeDarkNavy') : t('themeLight')}
                   </span>
                 </div>
                 <div className="px-4 py-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-500 dark:text-slate-400">Subjects</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t('navSubjects')}</span>
                     <span className="font-semibold font-mono-num text-slate-900 dark:text-slate-100">
-                      {subjects.length}
+                      {formatNum(subjects.length)}
                     </span>
                   </div>
                   {subjects.length > 0 && (
@@ -682,8 +707,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={() => setStep(2)}
                   className="min-h-[48px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back</span>
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                  <span>{t('back')}</span>
                 </button>
 
                 <button
@@ -691,8 +716,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={handleFinish}
                   className="flex-1 min-h-[48px] px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.99] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
                 >
-                  <span>Start Studying</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{t('startStudying')}</span>
+                  <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                 </button>
               </div>
             </div>

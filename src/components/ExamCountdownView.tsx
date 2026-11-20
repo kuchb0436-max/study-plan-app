@@ -1,7 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { GraduationCap, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { Exam, Subject } from '../types/study';
-import { addDaysToISO, daysUntil, formatShortDate, isValidDateISO, toLocalISODate } from '../utils/date';
+import {
+  addDaysToISO,
+  daysUntil,
+  formatShortDate,
+  isValidDateISO,
+  toLocalISODate,
+} from '../utils/date';
 import { ModalSheet } from './ModalSheet';
 
 interface ExamCountdownViewProps {
@@ -23,6 +30,9 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
   onSaveExam,
   onDeleteExam,
 }) => {
+  const { t, language, formatNum } = useI18n();
+  const intlLocale = language.intlLocale;
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [name, setName] = useState('');
@@ -72,15 +82,15 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Examination name is required.');
+      setError(t('errExamNameRequired'));
       return;
     }
     if (trimmed.length > 100) {
-      setError('Examination name must be 100 characters or fewer.');
+      setError(t('errExamNameMax'));
       return;
     }
     if (!isValidDateISO(date)) {
-      setError('Please select a valid examination date.');
+      setError(t('errExamDateInvalid'));
       return;
     }
 
@@ -103,25 +113,25 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
     let statusClass = 'text-indigo-600 dark:text-indigo-400';
 
     if (remaining === 0) {
-      countdownMain = 'Today';
-      countdownSub = 'Exam day';
+      countdownMain = t('today');
+      countdownSub = t('examDaySub');
       statusClass = 'text-rose-600 dark:text-rose-400';
     } else if (remaining === 1) {
-      countdownMain = '1';
-      countdownSub = 'day left · Tomorrow';
+      countdownMain = formatNum(1);
+      countdownSub = t('dayLeftTomorrow');
       statusClass = 'text-amber-600 dark:text-amber-400';
     } else if (remaining > 1 && remaining <= 7) {
-      countdownMain = String(remaining);
-      countdownSub = 'days left · Soon';
+      countdownMain = formatNum(remaining);
+      countdownSub = t('daysLeftSoon');
       statusClass = 'text-amber-600 dark:text-amber-400';
     } else if (remaining > 7) {
-      countdownMain = String(remaining);
-      countdownSub = 'days left';
+      countdownMain = formatNum(remaining);
+      countdownSub = t('daysLeft');
       statusClass = 'text-indigo-600 dark:text-indigo-400';
     } else {
       const ago = Math.abs(remaining);
-      countdownMain = String(ago);
-      countdownSub = ago === 1 ? 'day ago · Past' : 'days ago · Past';
+      countdownMain = formatNum(ago);
+      countdownSub = ago === 1 ? t('dayAgoPast') : t('daysAgoPast');
       statusClass = 'text-slate-400 dark:text-slate-500';
     }
 
@@ -144,7 +154,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
           </div>
 
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            <span>{formatShortDate(exam.date)}</span>
+            <span>{formatShortDate(exam.date, intlLocale)}</span>
             {subject ? ` · ${subject.name}` : ''}
           </p>
 
@@ -156,7 +166,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <div className="text-right">
+          <div className="text-end">
             <div className={`text-2xl sm:text-3xl font-bold font-mono-num leading-none ${statusClass}`}>
               {countdownMain}
             </div>
@@ -165,11 +175,11 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center -mr-2">
+          <div className="flex flex-col sm:flex-row items-center -me-2">
             <button
               type="button"
               onClick={() => openEditModal(exam)}
-              aria-label={`Edit ${exam.name}`}
+              aria-label={t('editItemAria', { name: exam.name })}
               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Pencil className="w-4 h-4" />
@@ -177,7 +187,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
             <button
               type="button"
               onClick={() => onDeleteExam(exam.id)}
-              aria-label={`Delete ${exam.name}`}
+              aria-label={t('deleteItemAria', { name: exam.name })}
               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
@@ -193,10 +203,10 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Exam Countdown
+            {t('examCountdownTitle')}
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Keep upcoming test dates visible with live day countdowns.
+            {t('examCountdownSub')}
           </p>
         </div>
 
@@ -206,7 +216,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
           className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-sm font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Exam</span>
+          <span>{t('addExam')}</span>
         </button>
       </div>
 
@@ -214,10 +224,10 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
         <div className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 px-6 py-14 text-center">
           <GraduationCap className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            No examinations added
+            {t('noExamsTitle')}
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Add your midterms, finals, or quizzes to track exactly how many days remain.
+            {t('noExamsSub')}
           </p>
           <button
             type="button"
@@ -225,15 +235,15 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
             className="mt-5 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add First Exam</span>
+            <span>{t('addFirstExam')}</span>
           </button>
         </div>
       ) : (
         <div className="space-y-6">
           {upcoming.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Upcoming ({upcoming.length})
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 tabular-nums">
+                {t('upcomingCount', { count: formatNum(upcoming.length) })}
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {upcoming.map(renderExamCard)}
@@ -243,8 +253,8 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
 
           {past.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Past Examinations ({past.length})
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 tabular-nums">
+                {t('pastExamsCount', { count: formatNum(past.length) })}
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 opacity-80">
                 {past.map(renderExamCard)}
@@ -258,7 +268,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
       <ModalSheet
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingExam ? 'Edit Examination' : 'Add Examination'}
+        title={editingExam ? t('editExam') : t('addExamTitle')}
       >
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {error && (
@@ -275,7 +285,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
               htmlFor="exam-name"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Examination Name
+              {t('examNameLabel')}
             </label>
             <input
               id="exam-name"
@@ -285,7 +295,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
                 setName(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="e.g., Physics Midterm Exam"
+              placeholder={t('examNamePlaceholder')}
               maxLength={100}
               autoFocus
               className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -298,7 +308,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
                 htmlFor="exam-date"
                 className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
               >
-                Exam Date
+                {t('examDateLabel')}
               </label>
               <input
                 id="exam-date"
@@ -317,7 +327,8 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
                 htmlFor="exam-subject"
                 className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
               >
-                Subject <span className="text-slate-400 font-normal">(optional)</span>
+                {t('subjectLabel')}{' '}
+                <span className="text-slate-400 font-normal">{t('optionalTag')}</span>
               </label>
               <select
                 id="exam-subject"
@@ -325,7 +336,7 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
                 onChange={(e) => setSubjectId(e.target.value)}
                 className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">General</option>
+                <option value="">{t('general')}</option>
                 {subjects.map((sub) => (
                   <option key={sub.id} value={sub.id}>
                     {sub.name}
@@ -340,14 +351,15 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
               htmlFor="exam-notes"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Room or Topics <span className="text-slate-400 font-normal">(optional)</span>
+              {t('roomTopicsLabel')}{' '}
+              <span className="text-slate-400 font-normal">{t('optionalTag')}</span>
             </label>
             <textarea
               id="exam-notes"
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Hall, seat number, or chapters covered..."
+              placeholder={t('roomTopicsPlaceholder')}
               maxLength={300}
               className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
@@ -359,13 +371,13 @@ export const ExamCountdownView: React.FC<ExamCountdownViewProps> = ({
               onClick={() => setModalOpen(false)}
               className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               className="min-h-[44px] px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-colors cursor-pointer"
             >
-              {editingExam ? 'Save Changes' : 'Add Exam'}
+              {editingExam ? t('saveChanges') : t('addExam')}
             </button>
           </div>
         </form>

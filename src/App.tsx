@@ -34,6 +34,8 @@ import {
   TaskPriority,
   ThemeMode,
 } from './types/study';
+import { useI18n } from './i18n';
+import { TranslationKey } from './i18n/locales/en';
 import { toLocalISODate } from './utils/date';
 import {
   clearPreImportBackup,
@@ -55,22 +57,22 @@ import {
   validateImportPayload,
 } from './utils/storage';
 
-const DESKTOP_NAV: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'subjects', label: 'Subjects', icon: BookOpen },
-  { id: 'timetable', label: 'Timetable', icon: CalendarClock },
-  { id: 'exams', label: 'Exams', icon: GraduationCap },
-  { id: 'progress', label: 'Progress', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', icon: Settings },
+const DESKTOP_NAV: { id: TabId; labelKey: TranslationKey; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', labelKey: 'navDashboard', icon: LayoutDashboard },
+  { id: 'tasks', labelKey: 'navTasks', icon: CheckSquare },
+  { id: 'subjects', labelKey: 'navSubjects', icon: BookOpen },
+  { id: 'timetable', labelKey: 'navTimetable', icon: CalendarClock },
+  { id: 'exams', labelKey: 'navExams', icon: GraduationCap },
+  { id: 'progress', labelKey: 'navProgress', icon: BarChart3 },
+  { id: 'settings', labelKey: 'navSettings', icon: Settings },
 ];
 
-const MOBILE_BOTTOM_NAV: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'timetable', label: 'Schedule', icon: CalendarClock },
-  { id: 'exams', label: 'Exams', icon: GraduationCap },
-  { id: 'progress', label: 'Progress', icon: BarChart3 },
+const MOBILE_BOTTOM_NAV: { id: TabId; labelKey: TranslationKey; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', labelKey: 'navHome', icon: LayoutDashboard },
+  { id: 'tasks', labelKey: 'navTasks', icon: CheckSquare },
+  { id: 'timetable', labelKey: 'navSchedule', icon: CalendarClock },
+  { id: 'exams', labelKey: 'navExams', icon: GraduationCap },
+  { id: 'progress', labelKey: 'navProgress', icon: BarChart3 },
 ];
 
 type UndoToastState =
@@ -79,6 +81,7 @@ type UndoToastState =
   | { kind: 'exam'; label: string; item: Exam };
 
 export default function App() {
+  const { t } = useI18n();
   const [initialLoad] = useState(() => loadAppDataWithStatus());
   const [data, setData] = useState<StudyFlowData>(initialLoad.data);
   const [onboardingDone, setOnboardingDone] = useState<boolean>(() => isOnboardingCompleted());
@@ -289,7 +292,11 @@ export default function App() {
       tasks: prev.tasks.filter((t) => t.id !== taskId),
     }));
     if (removed) {
-      showUndoToast({ kind: 'task', label: `Deleted "${removed.title}"`, item: removed });
+      showUndoToast({
+        kind: 'task',
+        label: t('deletedLabel', { name: removed.title }),
+        item: removed,
+      });
     }
   };
 
@@ -389,7 +396,7 @@ export default function App() {
       sessions: prev.sessions.filter((s) => s.id !== sessionId),
     }));
     if (removed) {
-      showUndoToast({ kind: 'session', label: 'Study session deleted', item: removed });
+      showUndoToast({ kind: 'session', label: t('sessionDeletedLabel'), item: removed });
     }
   };
 
@@ -442,7 +449,11 @@ export default function App() {
       exams: prev.exams.filter((ex) => ex.id !== examId),
     }));
     if (removed) {
-      showUndoToast({ kind: 'exam', label: `Deleted "${removed.name}"`, item: removed });
+      showUndoToast({
+        kind: 'exam',
+        label: t('deletedLabel', { name: removed.name }),
+        item: removed,
+      });
     }
   };
 
@@ -470,7 +481,7 @@ export default function App() {
       setStorageError(true);
       return {
         ok: false,
-        error: 'Unable to save imported backup to browser LocalStorage. Your previous data was kept.',
+        error: t('importSaveFailedError'),
       };
     }
 
@@ -487,13 +498,13 @@ export default function App() {
     const snapshot = getPreImportBackup();
     if (!snapshot) {
       setPreImportBackup(null);
-      return { ok: false, error: 'No pre-import backup was found.' };
+      return { ok: false, error: t('restorePreImportErr') };
     }
     const saved = saveAppData(snapshot.data);
     if (!saved) {
       return {
         ok: false,
-        error: 'Unable to write restored data to LocalStorage.',
+        error: t('restorePreImportErr'),
       };
     }
     canPersistRef.current = true;
@@ -565,20 +576,20 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F4F6FB] dark:bg-[#080D1A] text-slate-900 dark:text-slate-100 flex flex-col md:flex-row transition-colors duration-200">
       {/* Desktop Sidebar Rail */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:left-0 bg-white dark:bg-[#0B1120] border-r border-slate-200 dark:border-slate-800/80 z-30">
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:start-0 bg-white dark:bg-[#0B1120] border-e border-slate-200 dark:border-slate-800/80 z-30">
         <div className="h-16 px-5 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
           <img
             src="/icon.svg"
-            alt="Study Flow emblem"
+            alt={t('appName')}
             className="w-8 h-8 rounded-lg shrink-0"
             referrerPolicy="no-referrer"
           />
           <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50 whitespace-nowrap">
-            Study Flow
+            {t('appName')}
           </span>
         </div>
 
-        <nav aria-label="Primary navigation" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav aria-label={t('navPrimaryAria')} className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {DESKTOP_NAV.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -595,7 +606,7 @@ export default function App() {
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </button>
             );
           })}
@@ -628,12 +639,12 @@ export default function App() {
           >
             <img
               src="/icon.svg"
-              alt="Study Flow emblem"
+              alt={t('appName')}
               className="w-6 h-6 rounded-md shrink-0"
               referrerPolicy="no-referrer"
             />
             <span className="font-display text-[15px] min-[360px]:text-base font-bold tracking-tight text-slate-900 dark:text-slate-50">
-              Study Flow
+              {t('appName')}
             </span>
           </button>
 
@@ -642,7 +653,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => handleNavigate('subjects')}
-              aria-label="Subjects"
+              aria-label={t('navSubjects')}
               aria-current={activeTab === 'subjects' ? 'page' : undefined}
               className={`min-h-[44px] min-w-[44px] px-2 min-[360px]:px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === 'subjects'
@@ -651,12 +662,12 @@ export default function App() {
               }`}
             >
               <BookOpen className="w-4 h-4 shrink-0" />
-              <span className="hidden min-[360px]:inline">Subjects</span>
+              <span className="hidden min-[360px]:inline">{t('navSubjects')}</span>
             </button>
             <button
               type="button"
               onClick={() => handleNavigate('settings')}
-              aria-label="Settings"
+              aria-label={t('navSettings')}
               aria-current={activeTab === 'settings' ? 'page' : undefined}
               className={`min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
                 activeTab === 'settings'
@@ -671,7 +682,7 @@ export default function App() {
       </header>
 
       {/* Main Content Canvas */}
-      <main className="flex-1 md:pl-64 min-w-0">
+      <main className="flex-1 md:ps-64 min-w-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-12 space-y-5">
           {(corruptedWarning || storageError) && (
             <div
@@ -682,9 +693,7 @@ export default function App() {
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    {corruptedWarning
-                      ? 'Existing browser storage was corrupted and could not be loaded automatically. Your original raw storage has been safely preserved for recovery.'
-                      : 'Unable to save to browser LocalStorage. Storage may be full or restricted.'}
+                    {corruptedWarning ? t('corruptedBannerMsg') : t('storageSaveErrorMsg')}
                   </span>
                 </div>
                 <button
@@ -693,27 +702,27 @@ export default function App() {
                     setCorruptedWarning(false);
                     setStorageError(false);
                   }}
-                  aria-label="Dismiss storage warning"
+                  aria-label={t('dismissWarningAria')}
                   className="p-1 rounded-lg hover:bg-amber-500/20 shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
               {corruptedWarning && corruptedBackup && (
-                <div className="flex flex-wrap items-center gap-2 pl-6">
+                <div className="flex flex-wrap items-center gap-2 ps-6">
                   <button
                     type="button"
                     onClick={handleDownloadCorruptedBackup}
                     className="min-h-[36px] px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    Download Preserved Data
+                    {t('downloadPreservedData')}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleNavigate('settings')}
                     className="min-h-[36px] px-3 py-1 rounded-lg border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/15 transition-colors cursor-pointer"
                   >
-                    Open Backup Settings
+                    {t('openBackupSettings')}
                   </button>
                 </div>
               )}
@@ -804,7 +813,7 @@ export default function App() {
 
       {/* Android-style Mobile Bottom Navigation (60px + safe-area-inset-bottom) */}
       <nav
-        aria-label="Mobile bottom navigation"
+        aria-label={t('navMobileAria')}
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800/90"
       >
         <div className="grid grid-cols-5 h-[60px] max-w-lg mx-auto">
@@ -825,7 +834,7 @@ export default function App() {
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.25]' : 'stroke-[1.75]'}`} />
                 <span className="mt-0.5 text-[11px] font-semibold tracking-tight whitespace-nowrap">
-                  {item.label}
+                  {t(item.labelKey)}
                 </span>
               </button>
             );
@@ -834,7 +843,7 @@ export default function App() {
       </nav>
 
       {/* Coordinated Bottom Notification Stack (Prevents Offline Banner & Undo Toast overlap) */}
-      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 left-3 right-3 sm:left-4 sm:right-4 md:left-[17rem] z-50 pointer-events-none flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 start-3 end-3 sm:start-4 sm:end-4 md:start-[17rem] z-50 pointer-events-none flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div className="pointer-events-auto self-start">
           <OfflineIndicator inline />
         </div>
@@ -843,7 +852,7 @@ export default function App() {
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-auto w-full sm:w-80 sm:ml-auto rounded-xl bg-slate-900 dark:bg-slate-800 text-white border border-slate-700 px-4 py-2.5 shadow-xl flex items-center justify-between gap-3"
+            className="pointer-events-auto w-full sm:w-80 sm:ms-auto rounded-xl bg-slate-900 dark:bg-slate-800 text-white border border-slate-700 px-4 py-2.5 shadow-xl flex items-center justify-between gap-3"
           >
             <span className="text-xs font-medium truncate">{undoToast.label}</span>
             <div className="flex items-center gap-1 shrink-0">
@@ -853,12 +862,12 @@ export default function App() {
                 className="min-h-[36px] px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Undo</span>
+                <span>{t('undo')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setUndoToast(null)}
-                aria-label="Dismiss notification"
+                aria-label={t('dismissNotificationAria')}
                 className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />

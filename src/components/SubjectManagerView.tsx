@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
 import { BookOpen, Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useI18n } from '../i18n';
+import { TranslationKey } from '../i18n/locales/en';
 import { StudySession, StudyTask, Subject, SUBJECT_COLORS } from '../types/study';
 import { formatDuration } from '../utils/date';
 import { ModalSheet } from './ModalSheet';
+
+const COLOR_LABEL_KEYS: Record<string, TranslationKey> = {
+  blue: 'colorBlue',
+  indigo: 'colorIndigo',
+  violet: 'colorViolet',
+  cyan: 'colorCyan',
+  emerald: 'colorEmerald',
+  amber: 'colorAmber',
+  rose: 'colorRose',
+  teal: 'colorTeal',
+};
 
 interface SubjectManagerViewProps {
   subjects: Subject[];
@@ -19,6 +32,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
   onSaveSubject,
   onDeleteSubject,
 }) => {
+  const { t, formatNum } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [name, setName] = useState('');
@@ -26,6 +40,12 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
   const [color, setColor] = useState(SUBJECT_COLORS[0].hex);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
+
+  const durationFormatters = {
+    min: (n: number) => t('durationMin', { n: formatNum(n) }),
+    hrs: (h: number) => t('durationHrs', { h: formatNum(h) }),
+    hrsMin: (h: number, m: number) => t('durationHrsMin', { h: formatNum(h), m: formatNum(m) }),
+  };
 
   const openCreateModal = () => {
     setEditingSubject(null);
@@ -49,18 +69,18 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Subject name is required.');
+      setError(t('errSubjectRequired'));
       return;
     }
     if (trimmed.length > 60) {
-      setError('Subject name must be 60 characters or fewer.');
+      setError(t('errSubjectMax'));
       return;
     }
     const duplicate = subjects.some(
       (s) => s.id !== editingSubject?.id && s.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (duplicate) {
-      setError('A subject with this name already exists.');
+      setError(t('errSubjectDuplicate'));
       return;
     }
 
@@ -78,11 +98,9 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Subjects
+            {t('navSubjects')}
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Organize courses, assign colors, and track per-subject task completion.
-          </p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t('subjectsSub')}</p>
         </div>
         <button
           type="button"
@@ -90,7 +108,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
           className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-sm font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Subject</span>
+          <span>{t('addSubject')}</span>
         </button>
       </div>
 
@@ -98,10 +116,10 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
         <div className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 px-6 py-14 text-center">
           <BookOpen className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            No subjects added yet
+            {t('noSubjectsTitle')}
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Create your courses so you can categorize tasks, timetable blocks, and exams by subject.
+            {t('noSubjectsSub')}
           </p>
           <button
             type="button"
@@ -109,14 +127,14 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
             className="mt-5 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add First Subject</span>
+            <span>{t('addFirstSubject')}</span>
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {subjects.map((subject) => {
-            const subjectTasks = tasks.filter((t) => t.subjectId === subject.id);
-            const completedCount = subjectTasks.filter((t) => t.completed).length;
+            const subjectTasks = tasks.filter((taskItem) => taskItem.subjectId === subject.id);
+            const completedCount = subjectTasks.filter((taskItem) => taskItem.completed).length;
             const totalCount = subjectTasks.length;
             const pendingCount = totalCount - completedCount;
             const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -141,19 +159,23 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                       <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">
                         {subject.name}
                       </h2>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                         {subject.code ? `${subject.code} · ` : ''}
-                        <span className="tabular-nums">{pendingCount}</span> pending
-                        {weeklyMinutes > 0 ? ` · ${formatDuration(weeklyMinutes)}/wk` : ''}
+                        {t('pendingCount', { count: formatNum(pendingCount) })}
+                        {weeklyMinutes > 0
+                          ? ` · ${t('perWeek', {
+                              duration: formatDuration(weeklyMinutes, durationFormatters),
+                            })}`
+                          : ''}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center shrink-0 -mr-2 -mt-1">
+                  <div className="flex items-center shrink-0 -me-2 -mt-1">
                     <button
                       type="button"
                       onClick={() => openEditModal(subject)}
-                      aria-label={`Edit ${subject.name}`}
+                      aria-label={t('editItemAria', { name: subject.name })}
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <Pencil className="w-4 h-4" />
@@ -161,7 +183,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(subject)}
-                      aria-label={`Delete ${subject.name}`}
+                      aria-label={t('deleteItemAria', { name: subject.name })}
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -171,13 +193,16 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
 
                 <div>
                   <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-slate-600 dark:text-slate-400">
+                    <span className="text-slate-600 dark:text-slate-400 tabular-nums">
                       {totalCount === 0
-                        ? 'No tasks assigned'
-                        : `${completedCount} of ${totalCount} tasks done`}
+                        ? t('noTasksAssigned')
+                        : t('tasksDoneRatio', {
+                            done: formatNum(completedCount),
+                            total: formatNum(totalCount),
+                          })}
                     </span>
                     <span className="font-semibold font-mono-num text-slate-900 dark:text-slate-100">
-                      {percent}%
+                      {formatNum(percent)}%
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -200,7 +225,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
       <ModalSheet
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingSubject ? 'Edit Subject' : 'Add Subject'}
+        title={editingSubject ? t('editSubject') : t('addSubject')}
       >
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {error && (
@@ -217,7 +242,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
               htmlFor="subject-name"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Subject Name
+              {t('subjectNameLabel')}
             </label>
             <input
               id="subject-name"
@@ -227,7 +252,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                 setName(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="e.g., Organic Chemistry"
+              placeholder={t('subjectNamePlaceholder')}
               maxLength={60}
               autoFocus
               className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -239,14 +264,15 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
               htmlFor="subject-code"
               className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
             >
-              Course Code <span className="text-slate-400 font-normal">(optional)</span>
+              {t('courseCodeLabel')}{' '}
+              <span className="text-slate-400 font-normal">{t('optionalTag')}</span>
             </label>
             <input
               id="subject-code"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g., CHEM 210"
+              placeholder={t('courseCodePlaceholder')}
               maxLength={20}
               className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -254,17 +280,20 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
 
           <div>
             <span className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Color Accent
+              {t('colorAccent')}
             </span>
             <div className="grid grid-cols-4 gap-2">
               {SUBJECT_COLORS.map((option) => {
                 const selected = color.toLowerCase() === option.hex.toLowerCase();
+                const colorName = COLOR_LABEL_KEYS[option.id]
+                  ? t(COLOR_LABEL_KEYS[option.id])
+                  : option.name;
                 return (
                   <button
                     key={option.id}
                     type="button"
                     onClick={() => setColor(option.hex)}
-                    aria-label={option.name}
+                    aria-label={colorName}
                     aria-pressed={selected}
                     className={`min-h-[44px] rounded-xl border flex items-center justify-center gap-2 px-2 transition-all cursor-pointer ${
                       selected
@@ -279,7 +308,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                       {selected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
                     </span>
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-                      {option.id.charAt(0).toUpperCase() + option.id.slice(1)}
+                      {colorName}
                     </span>
                   </button>
                 );
@@ -293,13 +322,13 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
               onClick={() => setModalOpen(false)}
               className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               className="min-h-[44px] px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-colors cursor-pointer"
             >
-              {editingSubject ? 'Save Changes' : 'Create Subject'}
+              {editingSubject ? t('saveChanges') : t('createSubject')}
             </button>
           </div>
         </form>
@@ -309,12 +338,12 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
       <ModalSheet
         isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        title="Delete Subject"
+        title={t('deleteSubjectTitle')}
       >
         {deleteTarget && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Delete <strong>{deleteTarget.name}</strong>? Any timetable sessions for this subject will be removed, and linked tasks or exams will switch to General.
+              {t('deleteSubjectBody', { name: deleteTarget.name })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -322,7 +351,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                 onClick={() => setDeleteTarget(null)}
                 className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -332,7 +361,7 @@ export const SubjectManagerView: React.FC<SubjectManagerViewProps> = ({
                 }}
                 className="min-h-[44px] px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold text-white transition-colors cursor-pointer"
               >
-                Delete Subject
+                {t('deleteSubjectConfirm')}
               </button>
             </div>
           </div>

@@ -1,16 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  Check,
   Download,
   Eye,
+  Globe,
   History,
+  Languages,
   Moon,
   RotateCcw,
-  Smartphone,
+  Search,
   Sun,
   Upload,
   User,
 } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { StudentProfile, StudyFlowData, ThemeMode } from '../types/study';
 import { toLocalISODate } from '../utils/date';
 import {
@@ -21,12 +25,11 @@ import {
   validateImportPayload,
 } from '../utils/storage';
 import { ModalSheet } from './ModalSheet';
-import { PWAInstallButton } from './PWAInstallButton';
 
 interface PendingImportState {
   data: StudyFlowData;
   skippedCount: number;
-  warnings: string[];
+  profilePreserved: boolean;
 }
 
 interface SettingsViewProps {
@@ -58,6 +61,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onDiscardCorruptedBackup,
   onResetData,
 }) => {
+  const {
+    t,
+    language,
+    languageCode,
+    isAutoDetected,
+    supportedLanguages,
+    setLanguage,
+    setAutoLanguage,
+    formatNum,
+  } = useI18n();
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [profileName, setProfileName] = useState(data.profile.name);
   const [profileGrade, setProfileGrade] = useState(data.profile.grade);
@@ -70,28 +84,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [resetOnboardingAlso, setResetOnboardingAlso] = useState(false);
 
+  const [languageModalOpen, setLanguageModalOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState('');
+
   useEffect(() => {
     setProfileName(data.profile.name);
     setProfileGrade(data.profile.grade);
   }, [data.profile.name, data.profile.grade]);
+
+  const filteredLanguages = useMemo(() => {
+    const query = languageSearch.trim().toLowerCase();
+    if (!query) return supportedLanguages;
+    return supportedLanguages.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        item.nativeName.toLowerCase().includes(query) ||
+        item.code.toLowerCase().includes(query)
+    );
+  }, [supportedLanguages, languageSearch]);
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = profileName.trim();
     const trimmedGrade = profileGrade.trim();
     if (!trimmedName) {
-      setProfileError('Student name cannot be empty.');
+      setProfileError(t('errProfileNameEmpty'));
       return;
     }
     if (!trimmedGrade) {
-      setProfileError('Class or grade cannot be empty.');
+      setProfileError(t('errProfileGradeEmpty'));
       return;
     }
     setProfileError('');
     onUpdateProfile({ name: trimmedName, grade: trimmedGrade });
     setFeedback({
       type: 'success',
-      message: 'Student profile updated.',
+      message: t('profileUpdatedMsg'),
     });
   };
 
@@ -103,20 +131,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (!started) {
         setFeedback({
           type: 'error',
-          message: 'Could not start JSON backup download in this browser.',
+          message: t('exportFailedBrowser'),
         });
         return;
       }
       setFeedback({
         type: 'success',
-        message: `Your Study Flow backup (${filename}) has started downloading.`,
+        message: t('exportStartedMsg', { filename }),
       });
     } catch {
       setFeedback({
         type: 'error',
-        message: 'Could not export data. Please try again.',
+        message: t('exportErrorMsg'),
       });
     }
+  };
+
+  const buildImportWarnings = (skippedCount: number, profilePreserved: boolean): string[] => {
+    const notes: string[] = [];
+    if (skippedCount > 0) {
+      notes.push(t('skippedEntriesNote', { count: formatNum(skippedCount) }));
+    }
+    if (profilePreserved) {
+      notes.push(t('profilePreservedNote'));
+    }
+    return notes;
   };
 
   const applyImport = (pending: PendingImportState) => {
@@ -125,17 +164,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (!result.ok) {
       setFeedback({
         type: 'error',
-        message: result.error ?? 'Could not save imported backup. Your previous data was kept.',
+        message: result.error ?? t('importSaveFailedError'),
       });
       return;
     }
 
-    const baseMessage = `Imported ${pending.data.subjects.length} subjects, ${pending.data.tasks.length} tasks, ${pending.data.sessions.length} sessions, and ${pending.data.exams.length} exams.`;
-    const extraNotes =
-      pending.warnings.length > 0 ? ` ${pending.warnings.join(' ')}` : '';
+    const baseMessage = t('importSuccessMsg', {
+      subjects: formatNum(pending.data.subjects.length),
+      tasks: formatNum(pending.data.tasks.length),
+      sessions: formatNum(pending.data.sessions.length),
+      exams: formatNum(pending.data.exams.length),
+    });
+    const extraNotes = buildImportWarnings(pending.skippedCount, pending.profilePreserved);
     setFeedback({
       type: 'success',
-      message: `${baseMessage}${extraNotes} A backup of your previous data was saved automatically.`,
+      message: extraNotes.length > 0 ? `${baseMessage} ${extraNotes.join(' ')}` : baseMessage,
     });
   };
 
@@ -149,7 +192,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (!text.trim()) {
         setFeedback({
           type: 'error',
-          message: 'The selected file is empty. Existing data was not changed.',
+          message: t('importEmptyFileError'),
         });
         return;
       }
@@ -160,8 +203,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       } catch {
         setFeedback({
           type: 'error',
-          message:
-            'Malformed JSON file: unable to read backup contents. Your existing data was not changed.',
+          message: t('importMalformedJsonError'),
         });
         return;
       }
@@ -173,7 +215,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (!result.ok || !result.data) {
         setFeedback({
           type: 'error',
-          message: `${result.error ?? 'Invalid Study Flow backup file.'} Your existing data was not changed.`,
+          message: t('invalidBackupGeneric'),
         });
         return;
       }
@@ -181,7 +223,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const pending: PendingImportState = {
         data: result.data,
         skippedCount: result.skippedCount ?? 0,
-        warnings: result.warnings ?? [],
+        profilePreserved: Boolean(result.profilePreserved),
       };
 
       const hasCurrentData =
@@ -198,20 +240,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     } catch {
       setFeedback({
         type: 'error',
-        message: 'Could not read the selected file. Your existing data was kept intact.',
+        message: t('importReadError'),
       });
     }
   };
+
+  const pendingWarnings = pendingImport
+    ? buildImportWarnings(pendingImport.skippedCount, pendingImport.profilePreserved)
+    : [];
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          Settings
+          {t('navSettings')}
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Update your profile, customize appearance, or back up your local study data.
-        </p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t('settingsSub')}</p>
       </div>
 
       {feedback && (
@@ -233,10 +277,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <User className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Student Profile
+              {t('studentProfileTitle')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Saved locally on this device
+              {t('savedLocallyDevice')}
             </p>
           </div>
         </div>
@@ -257,7 +301,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 htmlFor="settings-profile-name"
                 className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
               >
-                Student Name
+                {t('studentNameLabel')}
               </label>
               <input
                 id="settings-profile-name"
@@ -267,7 +311,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   setProfileName(e.target.value);
                   if (profileError) setProfileError('');
                 }}
-                placeholder="Your name"
+                placeholder={t('yourNamePlaceholder')}
                 maxLength={60}
                 className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -278,7 +322,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 htmlFor="settings-profile-grade"
                 className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
               >
-                Class or Grade
+                {t('classGradeLabel')}
               </label>
               <input
                 id="settings-profile-grade"
@@ -288,7 +332,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   setProfileGrade(e.target.value);
                   if (profileError) setProfileError('');
                 }}
-                placeholder="e.g., Grade 11"
+                placeholder={t('classGradePlaceholder')}
                 maxLength={40}
                 className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -300,7 +344,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="submit"
               className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white text-sm font-semibold transition-colors cursor-pointer"
             >
-              Save Profile
+              {t('saveProfile')}
             </button>
 
             <button
@@ -308,8 +352,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={onPreviewOnboarding}
               className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm font-semibold transition-colors cursor-pointer"
             >
-              <Eye className="w-4 h-4" />
-              <span>Preview Welcome Screen</span>
+              <Eye className="w-4 h-4 shrink-0" />
+              <span>{t('previewWelcomeScreen')}</span>
             </button>
           </div>
         </form>
@@ -318,9 +362,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Theme Section */}
       <section className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Appearance</h2>
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            {t('appearanceTitle')}
+          </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Switch between Dark Navy and Light theme
+            {t('appearanceSub')}
           </p>
         </div>
 
@@ -335,8 +381,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <Moon className="w-4 h-4" />
-            <span>Dark</span>
+            <Moon className="w-4 h-4 shrink-0" />
+            <span>{t('themeDark')}</span>
           </button>
 
           <button
@@ -349,27 +395,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <Sun className="w-4 h-4" />
-            <span>Light</span>
+            <Sun className="w-4 h-4 shrink-0" />
+            <span>{t('themeLight')}</span>
           </button>
         </div>
       </section>
 
-      {/* PWA Installation Section */}
-      <section className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 p-5 space-y-3">
-        <div className="flex items-start gap-3">
-          <Smartphone className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Install &amp; Offline Support
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Study Flow caches the app shell on your device and stores everything locally in your browser without accounts.
-            </p>
+      {/* Language Section */}
+      <section className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <Languages className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {t('languageTitle')}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('languageSub')}
+              </p>
+            </div>
           </div>
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
+            {t('languageCountLabel', { count: formatNum(supportedLanguages.length) })}
+          </span>
         </div>
-        <div className="pt-1">
-          <PWAInstallButton variant="card" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 px-4 py-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {language.nativeName}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                ({language.name})
+              </span>
+              {isAutoDetected && (
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold">
+                  {t('languageAutoBadge')}
+                </span>
+              )}
+              {language.dir === 'rtl' && (
+                <span className="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 text-[10px] font-bold uppercase">
+                  {t('rtlBadge')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLanguageSearch('');
+              setLanguageModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm font-semibold transition-colors shrink-0 cursor-pointer"
+          >
+            <Globe className="w-4 h-4 shrink-0" />
+            <span>{t('languageChangeBtn')}</span>
+          </button>
         </div>
       </section>
 
@@ -377,11 +460,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <section className="rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            Personal Data Backup
+            {t('personalDataBackupTitle')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-            Currently storing {data.subjects.length} subjects · {data.tasks.length} tasks ·{' '}
-            {data.sessions.length} sessions · {data.exams.length} exams
+            {t('currentlyStoring', {
+              subjects: formatNum(data.subjects.length),
+              tasks: formatNum(data.tasks.length),
+              sessions: formatNum(data.sessions.length),
+              exams: formatNum(data.exams.length),
+            })}
           </p>
         </div>
 
@@ -391,8 +478,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             onClick={handleExport}
             className="inline-flex items-center justify-center gap-2 min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4" />
-            <span>Export JSON Backup</span>
+            <Download className="w-4 h-4 shrink-0" />
+            <span>{t('exportJsonBackup')}</span>
           </button>
 
           <button
@@ -400,8 +487,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center justify-center gap-2 min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm font-semibold transition-colors cursor-pointer"
           >
-            <Upload className="w-4 h-4" />
-            <span>Import JSON Backup</span>
+            <Upload className="w-4 h-4 shrink-0" />
+            <span>{t('importJsonBackup')}</span>
           </button>
 
           <input
@@ -410,7 +497,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             accept="application/json,.json"
             onChange={handleImportFile}
             className="hidden"
-            aria-label="Import Study Flow JSON backup"
+            aria-label={t('importFileAria')}
           />
         </div>
 
@@ -420,13 +507,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <History className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                  Pre-Import Backup Available
+                  {t('preImportBackupTitle')}
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 tabular-nums">
-                  Saved before your last import ({preImportBackup.data.subjects.length} subjects ·{' '}
-                  {preImportBackup.data.tasks.length} tasks ·{' '}
-                  {preImportBackup.data.sessions.length} sessions ·{' '}
-                  {preImportBackup.data.exams.length} exams).
+                  {t('preImportBackupDesc', {
+                    subjects: formatNum(preImportBackup.data.subjects.length),
+                    tasks: formatNum(preImportBackup.data.tasks.length),
+                    sessions: formatNum(preImportBackup.data.sessions.length),
+                    exams: formatNum(preImportBackup.data.exams.length),
+                  })}
                 </p>
               </div>
             </div>
@@ -438,25 +527,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   if (res.ok) {
                     setFeedback({
                       type: 'success',
-                      message: 'Your previous data from before the last import has been restored.',
+                      message: t('restoredPreImportMsg'),
                     });
                   } else {
                     setFeedback({
                       type: 'error',
-                      message: res.error ?? 'Could not restore the pre-import backup.',
+                      message: res.error ?? t('restorePreImportErr'),
                     });
                   }
                 }}
                 className="min-h-[38px] px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                Restore Previous Data
+                {t('restorePreviousData')}
               </button>
               <button
                 type="button"
                 onClick={onDismissPreImportBackup}
                 className="min-h-[38px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Dismiss Backup
+                {t('dismissBackup')}
               </button>
             </div>
           </div>
@@ -468,10 +557,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                  Preserved Unreadable Storage Snapshot
+                  {t('preservedCorruptedTitle')}
                 </p>
                 <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
-                  A copy of your previous unreadable browser storage is safely preserved so you can download it for recovery.
+                  {t('preservedCorruptedDesc')}
                 </p>
               </div>
             </div>
@@ -481,14 +570,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={onDownloadCorruptedBackup}
                 className="min-h-[38px] px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                Download Raw Snapshot
+                {t('downloadRawSnapshot')}
               </button>
               <button
                 type="button"
                 onClick={onDiscardCorruptedBackup}
                 className="min-h-[38px] px-3 py-1.5 rounded-lg border border-amber-500/40 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/15 transition-colors cursor-pointer"
               >
-                Discard Snapshot
+                {t('discardSnapshot')}
               </button>
             </div>
           </div>
@@ -499,10 +588,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <section className="rounded-2xl bg-white dark:bg-[#0F172A] border border-rose-200 dark:border-rose-900/50 p-5 space-y-3">
         <div>
           <h2 className="text-base font-bold text-rose-600 dark:text-rose-400">
-            Reset Application Data
+            {t('resetDataTitle')}
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Permanently remove all subjects, tasks, timetable sessions, and exam countdowns from this device.
+            {t('resetDataSub')}
           </p>
         </div>
 
@@ -514,37 +603,135 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           }}
           className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-sm font-semibold transition-colors cursor-pointer"
         >
-          <RotateCcw className="w-4 h-4" />
-          <span>Reset All Data</span>
+          <RotateCcw className="w-4 h-4 shrink-0" />
+          <span>{t('resetAllData')}</span>
         </button>
       </section>
+
+      {/* Language Selector Modal */}
+      <ModalSheet
+        isOpen={languageModalOpen}
+        onClose={() => setLanguageModalOpen(false)}
+        title={t('languageSelectorTitle')}
+      >
+        <div className="space-y-3.5">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={languageSearch}
+              onChange={(e) => setLanguageSearch(e.target.value)}
+              placeholder={t('languageSearchPlaceholder')}
+              aria-label={t('languageSearchAria')}
+              className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 ps-9 pe-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAutoLanguage();
+              setLanguageModalOpen(false);
+            }}
+            className={`w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-start transition-colors cursor-pointer ${
+              isAutoDetected
+                ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Globe className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span className="text-sm font-semibold truncate">{t('languageMatchDevice')}</span>
+            </div>
+            {isAutoDetected && <Check className="w-4 h-4 text-indigo-500 shrink-0" />}
+          </button>
+
+          <div className="max-h-72 overflow-y-auto space-y-1.5 pe-0.5">
+            {filteredLanguages.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-6 text-center space-y-2.5">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {t('languageNoResults')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLanguageSearch('')}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  {t('languageClearSearch')}
+                </button>
+              </div>
+            ) : (
+              filteredLanguages.map((item) => {
+                const isSelected = !isAutoDetected && item.code === languageCode;
+                return (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => {
+                      setLanguage(item.code);
+                      setLanguageModalOpen(false);
+                    }}
+                    className={`w-full min-h-[48px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-3 text-start transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/80'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {item.nativeName}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {item.name} · {item.code}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.dir === 'rtl' && (
+                        <span className="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 text-[10px] font-bold uppercase">
+                          {t('rtlBadge')}
+                        </span>
+                      )}
+                      {isSelected && <Check className="w-4 h-4 text-indigo-500" />}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </ModalSheet>
 
       {/* Confirm Import Dialog (Prevents accidental data loss) */}
       <ModalSheet
         isOpen={Boolean(pendingImport)}
         onClose={() => setPendingImport(null)}
-        title="Confirm Backup Import"
+        title={t('confirmImportTitle')}
       >
         {pendingImport && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Importing this backup will automatically save a recovery copy of your current data, then load:
+              {t('confirmImportBody')}
             </p>
             <ul className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3.5 space-y-1 text-sm text-slate-800 dark:text-slate-200 tabular-nums">
-              <li>{pendingImport.data.subjects.length} subjects</li>
-              <li>{pendingImport.data.tasks.length} tasks</li>
-              <li>{pendingImport.data.sessions.length} study sessions</li>
-              <li>{pendingImport.data.exams.length} examinations</li>
+              <li>{t('countSubjects', { count: formatNum(pendingImport.data.subjects.length) })}</li>
+              <li>{t('countTasks', { count: formatNum(pendingImport.data.tasks.length) })}</li>
+              <li>{t('countSessions', { count: formatNum(pendingImport.data.sessions.length) })}</li>
+              <li>{t('countExams', { count: formatNum(pendingImport.data.exams.length) })}</li>
               {pendingImport.data.profile.name && (
                 <li className="pt-1 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                  Profile: {pendingImport.data.profile.name}
-                  {pendingImport.data.profile.grade ? ` (${pendingImport.data.profile.grade})` : ''}
+                  {t('profileSummary', {
+                    profile: `${pendingImport.data.profile.name}${
+                      pendingImport.data.profile.grade
+                        ? ` (${pendingImport.data.profile.grade})`
+                        : ''
+                    }`,
+                  })}
                 </li>
               )}
             </ul>
-            {pendingImport.warnings.length > 0 && (
+            {pendingWarnings.length > 0 && (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-200 space-y-1">
-                {pendingImport.warnings.map((note) => (
+                {pendingWarnings.map((note) => (
                   <p key={note}>{note}</p>
                 ))}
               </div>
@@ -555,14 +742,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setPendingImport(null)}
                 className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="button"
                 onClick={() => applyImport(pendingImport)}
                 className="min-h-[44px] px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-colors cursor-pointer"
               >
-                Replace &amp; Import
+                {t('replaceAndImport')}
               </button>
             </div>
           </div>
@@ -573,12 +760,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <ModalSheet
         isOpen={confirmResetOpen}
         onClose={() => setConfirmResetOpen(false)}
-        title="Reset Study Flow Data?"
+        title={t('resetModalTitle')}
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            This will permanently delete all your subjects, tasks, study timetable sessions, and exam dates stored on this device. Consider exporting a JSON backup first.
-          </p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t('resetModalBody')}</p>
 
           <label className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none">
             <input
@@ -588,7 +773,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm text-slate-700 dark:text-slate-300">
-              Also clear student profile and restart setup
+              {t('resetAlsoOnboarding')}
             </span>
           </label>
 
@@ -598,7 +783,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => setConfirmResetOpen(false)}
               className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="button"
@@ -607,12 +792,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 setConfirmResetOpen(false);
                 setFeedback({
                   type: 'success',
-                  message: 'All application data has been reset.',
+                  message: t('resetSuccessMsg'),
                 });
               }}
               className="min-h-[44px] px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold text-white transition-colors cursor-pointer"
             >
-              Confirm Reset
+              {t('confirmReset')}
             </button>
           </div>
         </div>

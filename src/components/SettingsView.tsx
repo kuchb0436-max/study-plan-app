@@ -20,7 +20,7 @@ import { toLocalISODate } from '../utils/date';
 import {
   buildExportPayload,
   CorruptedStorageRecord,
-  downloadTextFile,
+  exportBackupFile,
   PreImportBackupRecord,
   validateImportPayload,
 } from '../utils/storage';
@@ -123,12 +123,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
       const jsonString = buildExportPayload(data);
       const filename = `study-flow-backup-${toLocalISODate()}.json`;
-      const started = downloadTextFile(filename, jsonString, 'application/json;charset=utf-8');
-      if (!started) {
+      const result = await exportBackupFile(filename, jsonString, 'application/json;charset=utf-8');
+      if (result.cancelled) {
+        return;
+      }
+      if (!result.ok) {
         setFeedback({
           type: 'error',
           message: t('exportFailedBrowser'),

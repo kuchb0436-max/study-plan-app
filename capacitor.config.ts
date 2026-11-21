@@ -1,0 +1,31 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.studyflow.app',
+  appName: 'Study Flow',
+  webDir: 'dist',
+  backgroundColor: '#080D1A',
+  server: {
+    androidScheme: 'https',
+  },
+  android: {
+    allowMixedContent: false,
+    backgroundColor: '#080D1A',
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 400,
+      launchAutoHide: true,
+      backgroundColor: '#080D1A',
+      showSpinner: false,
+      androidScaleType: 'CENTER_INSIDE',
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#080D1A',
+      overlaysWebView: false,
+    },
+  },
+};
+
+export default config;

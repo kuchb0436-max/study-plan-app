@@ -36,13 +36,15 @@ import {
 } from './types/study';
 import { useI18n } from './i18n';
 import { TranslationKey } from './i18n/locales/en';
+import { App as CapacitorApp } from '@capacitor/app';
 import { toLocalISODate } from './utils/date';
+import { isNativeAndroid, syncNativeSystemUI } from './utils/native';
 import {
   clearPreImportBackup,
   clearPreservedCorruptedStorage,
   CorruptedStorageRecord,
   createEmptyData,
-  downloadTextFile,
+  exportBackupFile,
   generateId,
   getPreImportBackup,
   getPreservedCorruptedStorage,
@@ -142,7 +144,7 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorageSync);
   }, []);
 
-  // Sync Tailwind dark class and PWA theme-color meta tag
+  // Sync Tailwind dark class, PWA theme-color meta tag, and native Android StatusBar
   useEffect(() => {
     const isDark = data.theme === 'dark';
     document.documentElement.classList.toggle('dark', isDark);
@@ -150,7 +152,57 @@ export default function App() {
     if (metaTheme) {
       metaTheme.setAttribute('content', isDark ? '#080D1A' : '#F4F6FB');
     }
+    void syncNativeSystemUI(data.theme);
   }, [data.theme]);
+
+  const backStateRef = useRef({
+    activeTab,
+    taskModalOpen,
+    previewOnboarding,
+  });
+  backStateRef.current = {
+    activeTab,
+    taskModalOpen,
+    previewOnboarding,
+  };
+
+  // Handle Android hardware back button safely when running natively
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    let active = true;
+    let handle: { remove: () => Promise<void> } | null = null;
+
+    void CapacitorApp.addListener('backButton', () => {
+      const state = backStateRef.current;
+      if (state.taskModalOpen) {
+        setTaskModalOpen(false);
+        return;
+      }
+      if (state.previewOnboarding) {
+        setPreviewOnboarding(false);
+        return;
+      }
+      if (state.activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      void CapacitorApp.exitApp();
+    }).then((listener) => {
+      if (active) {
+        handle = listener;
+      } else {
+        void listener.remove();
+      }
+    });
+
+    return () => {
+      active = false;
+      if (handle) {
+        void handle.remove();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -527,7 +579,7 @@ export default function App() {
       setCorruptedBackup(null);
       return;
     }
-    downloadTextFile(
+    void exportBackupFile(
       `study-flow-corrupted-recovery-${toLocalISODate()}.json`,
       snapshot.raw,
       'application/json;charset=utf-8'

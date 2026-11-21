@@ -1,3 +1,6 @@
+import { Capacitor } from '@capacitor/core';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import {
   Exam,
   StudentProfile,
@@ -300,6 +303,45 @@ export function downloadTextFile(
       }
     }
     return false;
+  }
+}
+
+export interface ExportBackupResult {
+  ok: boolean;
+  cancelled?: boolean;
+}
+
+export async function exportBackupFile(
+  filename: string,
+  content: string,
+  mimeType = 'application/json;charset=utf-8'
+): Promise<ExportBackupResult> {
+  if (!Capacitor.isNativePlatform()) {
+    return { ok: downloadTextFile(filename, content, mimeType) };
+  }
+
+  try {
+    const writeResult = await Filesystem.writeFile({
+      path: filename,
+      data: content,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+
+    await Share.share({
+      title: filename,
+      url: writeResult.uri,
+      dialogTitle: filename,
+    });
+
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : '';
+    if (message.includes('cancel') || message.includes('abort')) {
+      return { ok: false, cancelled: true };
+    }
+    return { ok: false };
   }
 }
 
